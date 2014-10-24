@@ -1,8 +1,12 @@
 # General customisation
+
+# User type flag
+# OFF: Only get the source files, no GIT information attached
+# ON: Also checkout the GIT repositories
+SET(OCM_DEVELOPER_MODE OFF)
+
 # Force to use all OpenCMISS dependencies - long compilation, but will work
 SET(FORCE_OCM_ALLDEPS NO)
-# Compile tests?
-ENABLE_TESTING()
 
 # Debug customisation
 SET(DEBUG_ALL NO)
@@ -37,12 +41,19 @@ SET(OCM_FORCE_PLAPACK NO)
 #SET(SCALAPACK_INCLUDES )
 SET(OCM_FORCE_SCALAPACK NO)
 
+# METIS
+#SET(METIS_LIBRARIES )
+#SET(METIS_INCLUDES )
+SET(OCM_USE_METIS YES)
+SET(OCM_FORCE_METIS NO)
+
 # PARMETIS
 #SET(PARMETIS_LIBRARIES )
 #SET(PARMETIS_INCLUDES )
+# debug disable; the mumps and scalapack only work with metis 4xx and this parmetis cant use the old metis.
+# so will either have to use older parmetis or check with chris how the new version is made to build
 SET(OCM_USE_PARMETIS YES)
 SET(OCM_FORCE_PARMETIS NO)
-
 
 # MUMPS
 #SET(MUMPS_LIBRARIES )
@@ -53,3 +64,11 @@ SET(OCM_FORCE_MUMPS NO)
 #SET(CHOLMOD_LIBRARIES )
 #SET(CHOLMOD_INCLUDES )
 SET(OCM_FORCE_CHOLMOD NO)
+
+# SuperLU / Dist
+#SET(SUPERLU_LIBRARIES )
+#SET(SUPERLU_INCLUDES )
+SET(OCM_USE_SUPERLU YES)
+SET(OCM_FORCE_SUPERLU NO)
+SET(OCM_USE_SUPERLU_DIST YES)
+SET(OCM_FORCE_SUPERLU_DIST NO)
