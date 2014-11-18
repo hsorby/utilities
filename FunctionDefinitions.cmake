@@ -1,3 +1,9 @@
+FUNCTION(PRINT_VARS)
+    get_cmake_property(_variableNames VARIABLES)
+    foreach (_variableName ${_variableNames})
+        message(STATUS "VARDUMP -- ${_variableName}=${${_variableName}}")
+    endforeach()
+ENDFUNCTION()
 
 FUNCTION( WXWIDGETS_HDRS XRC_SRCS _OUTFILES )
 

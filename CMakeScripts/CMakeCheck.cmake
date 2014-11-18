@@ -1,0 +1,69 @@
+SET(CMAKE_MIN_VERSION 3.0.0)
+message(STATUS "Checking CMake..")
+if (CMAKE_VERSION VERSION_LESS ${CMAKE_MIN_VERSION})
+    if (WIN32)
+        message(FATAL_ERROR "Your CMake version is ${CMAKE_VERSION}.\nAt least version ${CMAKE_MIN_VERSION} is required for OpenCMISS.\nPlease download & install from http://www.cmake.org/download/")
+    else()
+        
+        SET(CMAKE_INSTALL_DIR ${CMAKE_CURRENT_SOURCE_DIR}/install/cmake)
+        SET(MY_CMAKE_EXECUTABLE ${CMAKE_INSTALL_DIR}/bin/cmake${CMAKE_EXECUTABLE_SUFFIX})
+        
+        # Check if the binary is already there and hint the user to it
+        if (EXISTS ${MY_CMAKE_EXECUTABLE})
+            message(FATAL_ERROR
+                "@@@@@@@@@ OpenCMISS utilities @@@@@@@@@\n"
+                "Your new CMake version has been built at\n${MY_CMAKE_EXECUTABLE}\nbut does not seem to be used.\nCurrently running version ${CMAKE_VERSION} at ${CMAKE_COMMAND}\n"
+                "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+            )
+            return()
+        endif()
+        
+        message(WARNING "Your CMake version is ${CMAKE_VERSION}, but at least version ${CMAKE_MIN_VERSION} is required for OpenCMISS. Building now..")
+        execute_process(
+            COMMAND git submodule update --init cmake
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+        find_package(OpenSSL QUIET)
+        SET(CMAKE_DEFS )
+        if (OPENSSL_FOUND)
+            #SET(CMAKE_USE_OPENSSL YES)
+            SET(CMAKE_DEFS -DCMAKE_USE_OPENSSL=YES)
+        else()
+            message(WARNING "Building CMake 3.xx: OpenSSL could not be located on your system. See the OpenCMISS documentation for details.")
+        endif()
+        
+        # Create dir
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/build/cmake
+        )
+        # Get build commands
+        include(${CMAKE_CURRENT_SOURCE_DIR}/BuildMacros.cmake)
+        GET_BUILD_COMMANDS(LOCAL_PLATFORM_BUILD_COMMAND LOCAL_PLATFORM_INSTALL_COMMAND .)
+        # Run cmake
+        execute_process(COMMAND ${CMAKE_COMMAND} -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_DIR} ${CMAKE_DEFS} ${CMAKE_CURRENT_SOURCE_DIR}/cmake
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/build/cmake
+        )
+        # Run build
+        execute_process(COMMAND ${LOCAL_PLATFORM_BUILD_COMMAND}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/build/cmake
+        )
+        # Run build/install
+        execute_process(COMMAND ${LOCAL_PLATFORM_INSTALL_COMMAND}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/build/cmake
+        )
+        if (NOT EXISTS ${MY_CMAKE_EXECUTABLE})
+            message(FATAL_ERROR
+                "@@@@@@@@@ OpenCMISS utilities @@@@@@@@@\n"
+                "Building a newer CMake version failed. Please check & build manually.\n"
+                "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+            )
+        else()
+            message(FATAL_ERROR
+                "@@@@@@@@@ OpenCMISS utilities @@@@@@@@@\n" 
+                "An up-to-date CMake version has been compiled at\n--> ${MY_CMAKE_EXECUTABLE} <--\nPlease re-invoke the build process using the new version.\n"
+                "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"
+            )
+        endif()
+    endif()
+    return()   
+endif()
+message(STATUS "Checking CMake.. found ${CMAKE_VERSION} >= ${CMAKE_MIN_VERSION}")
