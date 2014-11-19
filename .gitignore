@@ -1,3 +1,4 @@
+cmake3modules
 cmake_modules/cmake-2.8*
 build/
 install/
