@@ -37,6 +37,7 @@ macro(GET_SUBMODULE_STATUS STATUS_VAR REV_VAR REPO_DIR MODULE_PATH)
     string(SUBSTRING ${RES} 1 40 ${REV_VAR})
 endmacro()
 
+# Recursively inits and updates a submodule and switches to a specified branch, if given. 
 macro(OCM_DEVELOPER_SUBMODULE_CHECKOUT REPO_ROOT MODULE_PATH BRANCH)
 #macro(ADD_SUBMODULE_CHECKOUT_STEPS PROJECT REPO_ROOT MODULE_PATH BRANCH)
     #
@@ -57,20 +58,21 @@ macro(OCM_DEVELOPER_SUBMODULE_CHECKOUT REPO_ROOT MODULE_PATH BRANCH)
 	
     message(STATUS "Initializing git submodule ${MODULE_PATH}..")
     execute_process(COMMAND git submodule update --init --recursive ${MODULE_PATH}
+        RESULT_VARIABLE RETCODE
         ERROR_VARIABLE UPDATE_CMD_ERR
         WORKING_DIRECTORY ${REPO_ROOT})
-    if (UPDATE_CMD_ERR)
-        message(FATAL_ERROR "Error updating submodule '${MODULE_PATH}' (fix manually): ${UPDATE_CMD_ERR}")
+    if (NOT RETCODE EQUAL 0)
+        message(FATAL_ERROR "Error updating submodule '${MODULE_PATH}' (code: ${RETCODE}): ${UPDATE_CMD_ERR}")
     endif()
     if (BRANCH)
        # Check out opencmiss branch
        execute_process(COMMAND git checkout ${BRANCH}
            WORKING_DIRECTORY ${REPO_ROOT}/${MODULE_PATH}
-           #OUTPUT_VARIABLE CHECKOUT_DUMMY_OUTPUT #
-           #ERROR_VARIABLE CHECKOUT_CMD_ERR
+           RESULT_VARIABLE RETCODE
+           ERROR_VARIABLE CHECKOUT_CMD_ERR
        )
-       #if (CHECKOUT_CMD_ERR)
-       #    message(FATAL_ERROR "Error checking out submodule '${MODULE_PATH}' (fix manually): ${CHECKOUT_CMD_ERR}")
-       #endif()
+       if (NOT RETCODE EQUAL 0)
+           message(FATAL_ERROR "Error checking out submodule '${MODULE_PATH}' (code: ${RETCODE}): ${CHECKOUT_CMD_ERR}")
+       endif()
     endif()
 endmacro()
