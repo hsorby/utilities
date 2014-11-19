@@ -39,22 +39,21 @@ endmacro()
 
 macro(OCM_DEVELOPER_SUBMODULE_CHECKOUT REPO_ROOT MODULE_PATH BRANCH)
 #macro(ADD_SUBMODULE_CHECKOUT_STEPS PROJECT REPO_ROOT MODULE_PATH BRANCH)
-    #[[
-    ExternalProject_Add_Step(${PROJECT} gitinit
-	        COMMAND git submodule update --init --recursive ${MODULE_PATH}
-	        COMMENT "Initializing git submodule ${MODULE_PATH}.."
-	        DEPENDERS configure
-	        WORKING_DIRECTORY ${REPO_ROOT})
-	if (BRANCH)
-     	ExternalProject_Add_Step(${PROJECT} gitcheckout
-    	        COMMAND git checkout ${BRANCH}
-    	        COMMENT "Checking out branch ${BRANCH} of ${MODULE_PATH}.."
-    	        DEPENDEES gitinit
-    	        DEPENDERS configure
-    	        WORKING_DIRECTORY ${REPO_ROOT}/${MODULE_PATH}
-    	)
-	endif()
-	]]
+    #
+    #ExternalProject_Add_Step(${PROJECT} gitinit
+	#        COMMAND git submodule update --init --recursive ${MODULE_PATH}
+	#        COMMENT "Initializing git submodule ${MODULE_PATH}.."
+	#        DEPENDERS configure
+	#        WORKING_DIRECTORY ${REPO_ROOT})
+	#if (BRANCH)
+    # 	ExternalProject_Add_Step(${PROJECT} gitcheckout
+    # 	        COMMAND git checkout ${BRANCH}
+    #	        COMMENT "Checking out branch ${BRANCH} of ${MODULE_PATH}.."
+    # 	        DEPENDEES gitinit
+    #	        DEPENDERS configure
+    # 	        WORKING_DIRECTORY ${REPO_ROOT}/${MODULE_PATH}
+    #	)
+	#endif()
 	
     message(STATUS "Initializing git submodule ${MODULE_PATH}..")
     execute_process(COMMAND git submodule update --init --recursive ${MODULE_PATH}
