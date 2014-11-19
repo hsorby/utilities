@@ -36,7 +36,7 @@ if (CMAKE_VERSION VERSION_LESS ${CMAKE_MIN_VERSION})
             COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_SOURCE_DIR}/build/cmake
         )
         # Get build commands
-        include(${CMAKE_CURRENT_SOURCE_DIR}/BuildMacros.cmake)
+        include(OCMUtilsBuildMacros)
         GET_BUILD_COMMANDS(LOCAL_PLATFORM_BUILD_COMMAND LOCAL_PLATFORM_INSTALL_COMMAND .)
         # Run cmake
         execute_process(COMMAND ${CMAKE_COMMAND} -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_DIR} ${CMAKE_DEFS} ${CMAKE_CURRENT_SOURCE_DIR}/cmake
