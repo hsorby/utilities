@@ -93,5 +93,6 @@ else()
     endforeach()
 endif()
 
-include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(@PACKAGE_NAME@ DEFAULT_MSG ${FOUND})
+if (@PACKAGE_NAME@_FIND_REQUIRED AND NOT @PACKAGE_NAME@_FOUND)
+    message(FATAL_ERROR "Could not find @PACKAGE_NAME@ with either MODULE or CONFIG mode.\nCMAKE_MODULE_PATH: ${CMAKE_MODULE_PATH}\nCMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
+endif()
