@@ -10,51 +10,67 @@ MACRO(GET_COMPILER_NAME VARNAME)
 		SET(${VARNAME} "watcom" )
 	ELSEIF( MSVC OR MSVC_IDE OR MSVC60 OR MSVC70 OR MSVC71 OR MSVC80 OR CMAKE_COMPILER_2005 OR MSVC90 )
 		SET(${VARNAME} "msvc" )
-	ELSEIF( CMAKE_COMPILER_IS_GNUCC )
-		SET(${VARNAME} "gcc" )
-	ELSEIF( CMAKE_COMPILER_IS_GNUCXX )
-		SET(${VARNAME} "gxx" )
+	ELSEIF( CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
+	    execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpversion
+	        RESULT_VARIABLE RES
+	        OUTPUT_VARIABLE VERSION
+	        OUTPUT_STRIP_TRAILING_WHITESPACE)
+	    if (NOT RES EQUAL 0)
+	        SET(VERSION "0.0")
+	    endif()
+	    SET(${VARNAME} gcc-${VERSION})
+	    #if( CMAKE_COMPILER_IS_GNUCC )
+	    #    SET(${VARNAME} gcc-${VERSION})
+	    #else()
+	    #    SET(${VARNAME} gxx-${VERSION})
+	    #endif()
 	ELSEIF( CYGWIN )
 		SET(${VARNAME} "cygwin" )
 	ENDIF()
 ENDMACRO()
 
-macro(APPEND_ARCHITECTURE_PATH VARNAME)
+macro(GET_ARCHITECTURE_PATH VARNAME)
     SET(ARCHPATH )
     
-    # Architecture/System
-    SET(ARCHPATH ${CMAKE_SYSTEM_PROCESSOR}_${CMAKE_SYSTEM_NAME})
+    if(OCM_USE_ARCHITECTURE_PATH)
     
-    # Compiler
-    GET_COMPILER_NAME(COMPILER)
-    SET(ARCHPATH ${ARCHPATH}/${COMPILER})
+        # Architecture/System
+        STRING(TOLOWER ${CMAKE_SYSTEM_NAME} CMAKE_SYSTEM_NAME_LOWER)
+        SET(ARCHPATH ${CMAKE_SYSTEM_PROCESSOR}_${CMAKE_SYSTEM_NAME_LOWER})
+        
+        # MPI version information
+        if(DEFINED MPI_C_COMPILER)
+            SET(MPI_PART )
+            if ("${MPI_C_INCLUDE_PATH}" MATCHES ".*mpich2.*")
+                SET(MPI_PART mpich2)
+            elseif("${MPI_C_INCLUDE_PATH}" MATCHES ".*openmpi.*")
+                SET(MPI_PART openmpi)
+            else()
+                get_filename_component(COMP_NAME ${MPI_C_COMPILER} NAME)
+                STRING(TOLOWER MPI_PART ${COMP_NAME})
+            endif()
+            if (MPI_PART)
+                SET(ARCHPATH ${ARCHPATH}/${MPI_PART})
+            endif()
+        endif()
+        
+        # Compiler
+        GET_COMPILER_NAME(COMPILER)
+        SET(ARCHPATH ${ARCHPATH}/${COMPILER})
     
-    # MPI Compiler information
-    SET(COMP_NAME )
-    if(MPI_C_COMPILER)
-        get_filename_component(C_COMP_NAME ${MPI_C_COMPILER} NAME)
-        SET(COMP_NAME ${C_COMP_NAME})
-    endif()
-    if(MPI_Fortran_COMPILER)
-        get_filename_component(F_COMP_NAME ${MPI_Fortran_COMPILER} NAME)
-        SET(COMP_NAME "${COMP_NAME}_${F_COMP_NAME}")
-    endif()
-    if (COMP_NAME)
-        SET(ARCHPATH ${ARCHPATH}/${COMP_NAME})
     endif()
     
-    # Append to desired variable
-    SET(${VARNAME} ${${VARNAME}}/${ARCHPATH})
-endmacro()
-
-# Appends the currently selected build type to a path.
-# So far works on unix only
-macro(APPEND_BUILDTYPE_PATH VARNAME)
+    # Build type
     if (CMAKE_BUILD_TYPE)
         STRING(TOLOWER ${CMAKE_BUILD_TYPE} buildtype)
         SET(BUILDTYPEEXTRA ${buildtype})
     elseif (NOT CMAKE_CFG_INTDIR STREQUAL .)
         SET(BUILDTYPEEXTRA ${CMAKE_CFG_INTDIR})
+    else()
+        SET(BUILDTYPEEXTRA noconfig)
     endif()
-    SET(${VARNAME} ${${VARNAME}}/${BUILDTYPEEXTRA})
+    SET(ARCHPATH ${ARCHPATH}/${BUILDTYPEEXTRA})
+    
+    # Append to desired variable
+    SET(${VARNAME} ${ARCHPATH})
 endmacro()

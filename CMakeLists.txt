@@ -7,6 +7,9 @@ LIST(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMakeScripts)
 # Check if cmake is up-to-date (and build if required)
 include(CMakeCheck)
 
+# Generate the wrappers (if not existing)
+include(OCMUtilsGenerateFindXXXWrappers)
+
 # Now we know we have external project available
 
 
