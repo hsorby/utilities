@@ -12,24 +12,37 @@ macro(MODULE_TO_TARGETS LIBS INCS)
     message(STATUS "Converting found module to imported targets for package @PACKAGE_NAME@:\n"
         "Libraries: ${LIBS}\nIncludes: ${INCS}")
     GET_BUILD_TYPE(CURRENT_BUILD_TYPE)
+    # Try different patterns to guess/recognize the already installed packages
+    SET(PATTERNS "^(lib)?${TARGET}.[a|so|lib|dll]$"
+        "^(lib)?${TARGET}[-|_]${@PACKAGE_NAME@_FIND_VERSION}.[a|so|lib|dll]$"
+        "^(lib)?${TARGET}[-|_]${@PACKAGE_NAME@_FIND_VERSION}[^.]*"
+        "^(lib)?${TARGET}[^.]*")
     foreach(TARGET @PACKAGE_TARGETS@)
+        SET(CURTARGET_DONE FALSE)
         foreach(LIB ${LIBS})
             get_filename_component(LIBFILE ${LIB} NAME)
-            if (LIBFILE MATCHES "^(lib)?${TARGET}[^.]*")
-                message(STATUS "Matched target ${TARGET} to library '${LIB}'")
-                add_library(${TARGET} UNKNOWN IMPORTED)
-                set_property(TARGET ${TARGET} APPEND PROPERTY IMPORTED_CONFIGURATIONS CURRENT_BUILD_TYPE)
-                set_target_properties(${TARGET} PROPERTIES 
-                    IMPORTED_LOCATION_${CURRENT_BUILD_TYPE} ${LIB})
-                # Simply add the m and rt libraries on unix
-                if(UNIX)
-                    set_target_properties(${TARGET} PROPERTIES
-                        INTERFACE_LINK_LIBRARIES "m;rt")
-                endif()
-                if (INCS)
+            foreach(PATTERN ${PATTERNS})
+                if (LIBFILE MATCHES ${PATTERN})
+                    message(STATUS "Matched target ${TARGET} to library '${LIB}'")
+                    add_library(${TARGET} UNKNOWN IMPORTED)
+                    set_property(TARGET ${TARGET} APPEND PROPERTY IMPORTED_CONFIGURATIONS CURRENT_BUILD_TYPE)
                     set_target_properties(${TARGET} PROPERTIES 
-                        INTERFACE_INCLUDE_DIRECTORIES "${INCS}")
+                        IMPORTED_LOCATION_${CURRENT_BUILD_TYPE} ${LIB})
+                    # Simply add the m and rt libraries on unix
+                    if(UNIX)
+                        set_target_properties(${TARGET} PROPERTIES
+                            INTERFACE_LINK_LIBRARIES "m;rt")
+                    endif()
+                    if (INCS)
+                        set_target_properties(${TARGET} PROPERTIES 
+                            INTERFACE_INCLUDE_DIRECTORIES "${INCS}")
+                    endif()
+                    SET(CURTARGET_DONE TRUE)
+                    break()
                 endif()
+            endforeach()
+            if (CURTARGET_DONE)
+                break()
             endif()
         endforeach()
     endforeach()

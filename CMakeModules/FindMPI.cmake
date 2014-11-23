@@ -108,7 +108,7 @@
 
 # include this to handle the QUIETLY and REQUIRED arguments
 include(FindPackageHandleStandardArgs)
-include(GetPrerequisites)
+#include(GetPrerequisites)
 
 #
 # This part detects MPI compilers, attempting to wade through the mess of compiler names in
@@ -531,6 +531,102 @@ function(try_regular_compiler lang success)
   unset(compiler_has_mpi CACHE)
 endfunction()
 
+# This function has been added here from GetPrerequisites.
+# It has been modified to resolve symlinks on linux so that the "file"
+function(is_file_executable file result_var)
+  #
+  # A file is not executable until proven otherwise:
+  #
+  set(${result_var} 0 PARENT_SCOPE)
+
+  get_filename_component(file_full "${file}" ABSOLUTE)
+  string(TOLOWER "${file_full}" file_full_lower)
+  #message(STATUS "file_full='${file_full}'")
+
+  # If file name ends in .exe on Windows, *assume* executable:
+  #
+  if(WIN32 AND NOT UNIX)
+    if("${file_full_lower}" MATCHES "\\.exe$")
+      set(${result_var} 1 PARENT_SCOPE)
+      return()
+    endif()
+
+    # A clause could be added here that uses output or return value of dumpbin
+    # to determine ${result_var}. In 99%+? practical cases, the exe name
+    # match will be sufficient...
+    #
+  endif()
+
+  # Use the information returned from the Unix shell command "file" to
+  # determine if ${file_full} should be considered an executable file...
+  #
+  # If the file command's output contains "executable" and does *not* contain
+  # "text" then it is likely an executable suitable for prerequisite analysis
+  # via the get_prerequisites macro.
+  #
+  if(UNIX)
+    if(NOT file_cmd)
+      find_program(file_cmd "file")
+      mark_as_advanced(file_cmd)
+    endif()
+
+    if(file_cmd)
+      execute_process(COMMAND "${file_cmd}" "${file_full}"
+        OUTPUT_VARIABLE file_ov
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+
+      # Replace the name of the file in the output with a placeholder token
+      # (the string " _file_full_ ") so that just in case the path name of
+      # the file contains the word "text" or "executable" we are not fooled
+      # into thinking "the wrong thing" because the file name matches the
+      # other 'file' command output we are looking for...
+      #
+      string(REPLACE "${file_full}" " _file_full_ " file_ov "${file_ov}")
+      string(TOLOWER "${file_ov}" file_ov)
+
+      #message(STATUS "file_ov='${file_ov}'")
+      if("${file_ov}" MATCHES "symbolic link")
+        #message(STATUS "symlink!")
+        if(NOT readlink_cmd)
+          find_program(readlink_cmd "readlink")
+          mark_as_advanced(readlink_cmd)
+        endif()
+        if (readlink_cmd)
+            execute_process(COMMAND "${readlink_cmd}" -e -n "${file_full}"
+              OUTPUT_VARIABLE resolved_link
+              OUTPUT_STRIP_TRAILING_WHITESPACE
+              )
+            #message(STATUS "recursive call: is_exec(${resolved_link} recursive_result)")
+            is_file_executable(${resolved_link} recursive_result)
+            #message(STATUS "recursive result: ${recursive_result}")
+            set(${result_var} ${recursive_result} PARENT_SCOPE)
+        else()
+            message(WARNING "No 'readlink' command, cant resolve symlink '${file_full}'")
+        endif()
+      elseif("${file_ov}" MATCHES "executable")
+        #message(STATUS "executable!")
+        if("${file_ov}" MATCHES "text")
+          #message(STATUS "but text, so *not* a binary executable!")
+        else()
+          set(${result_var} 1 PARENT_SCOPE)
+          return()
+        endif()
+      endif()
+
+      # Also detect position independent executables on Linux,
+      # where "file" gives "shared object ... (uses shared libraries)"
+      if("${file_ov}" MATCHES "shared object.*\(uses shared libs\)")
+        set(${result_var} 1 PARENT_SCOPE)
+        return()
+      endif()
+
+    else()
+      message(WARNING "warning: No 'file' command, skipping execute_process...")
+    endif()
+  endif()
+endfunction()
+
 # End definitions, commence real work here.
 
 SET(PATHOPT )
@@ -589,27 +685,30 @@ endforeach()
 foreach (lang C CXX Fortran)
   #message(STATUS "MPI_${lang}_COMPILER '${MPI_${lang}_COMPILER}': CMAKE_${lang}_COMPILER_WORKS=${CMAKE_${lang}_COMPILER_WORKS}")
   if (CMAKE_${lang}_COMPILER_WORKS)
+    set(try_libs TRUE)
     # If the user supplies a compiler *name* instead of an absolute path, assume that we need to find THAT compiler.
     if (MPI_${lang}_COMPILER)
-      message(STATUS "Trying to use custom MPI_${lang}_COMPILER '${MPI_${lang}_COMPILER}'")  
-      is_file_executable(MPI_${lang}_COMPILER MPI_COMPILER_IS_EXECUTABLE)
+      message(STATUS "Trying to use custom MPI_${lang}_COMPILER '${MPI_${lang}_COMPILER}'")
+      # If the user specifies a compiler, we don't want to try to search libraries either.
+      set(try_libs FALSE)  
+      is_file_executable(${MPI_${lang}_COMPILER} MPI_COMPILER_IS_EXECUTABLE)
       if (NOT MPI_COMPILER_IS_EXECUTABLE)
-        #message("User-defined MPI_${lang}_COMPILER is NOT an executable")
+        message("User-defined MPI_${lang}_COMPILER is NOT an executable")
         # Get rid of our default list of names and just search for the name the user wants.
         set(_MPI_${lang}_COMPILER_NAMES ${MPI_${lang}_COMPILER})
         set(MPI_${lang}_COMPILER "MPI_${lang}_COMPILER-NOTFOUND" CACHE FILEPATH "Cleared" FORCE)
-        # If the user specifies a compiler, we don't want to try to search libraries either.
-        set(try_libs FALSE)
       endif()
     else()
       set(try_libs TRUE)
     endif()
 
     #message(STATUS "Looking for MPI_${lang}_COMPILER with names ${_MPI_${lang}_COMPILER_NAMES} under ${_MPI_PREFIX_PATH}")
+    #message(STATUS "Before: MPI_${lang}_COMPILER=${MPI_${lang}_COMPILER}")
     find_program(MPI_${lang}_COMPILER
       NAMES  ${_MPI_${lang}_COMPILER_NAMES}
       PATHS  ${_MPI_PREFIX_PATH} "${MPI_HOME}/bin" "$ENV{MPI_HOME}/bin"
       ${PATHOPT})
+    #message(STATUS "After: MPI_${lang}_COMPILER=${MPI_${lang}_COMPILER}\nTry_libs=${try_libs}")      
     interrogate_mpi_compiler(${lang} ${try_libs})
     mark_as_advanced(MPI_${lang}_COMPILER)
 
