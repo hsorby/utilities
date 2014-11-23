@@ -9,22 +9,32 @@ macro(GET_BUILD_TYPE VARNAME)
 endmacro()
 
 macro(MODULE_TO_TARGETS LIBS INCS)
-    message(STATUS "Converting found module to imported targets for package @PACKAGE_NAME@:\n"
-        "Libraries: ${LIBS}\nIncludes: ${INCS}")
+    SET(LIBS ${LIBS})
+    #message(STATUS "Converting found module to imported targets for package @PACKAGE_NAME@")
+        #":\nLibraries: ${LIBS}\nIncludes: ${INCS}")
     GET_BUILD_TYPE(CURRENT_BUILD_TYPE)
+    
+    SET(FOUND_TARGETS )
+    SET(ALL_TARGETS @PACKAGE_TARGETS@)
     SET(DONE_LIBS )
-    foreach(TARGET @PACKAGE_TARGETS@)
+    foreach(TARGET ${ALL_TARGETS})
         #message(STATUS "Trying target ${TARGET}")
         SET(CURTARGET_DONE FALSE)
+        
         # Try different patterns to guess/recognize the already installed packages
-        SET(PATTERNS "^(lib)?${TARGET}.[a|so|lib|dll]$"
-            "^(lib)?${TARGET}[-|_]${@PACKAGE_NAME@_FIND_VERSION}.[a|so|lib|dll]$"
+        # Here we loop patterns before libraries, so that exact matches are tried
+        # against all library names before the more 'relaxed' patterns are tried for a name,
+        # which could get a wrong match
+        SET(PATTERNS 
+            "^(lib)?${TARGET}[-|_]${@PACKAGE_NAME@_FIND_VERSION}.(a|so|lib|dll)$"
             "^(lib)?${TARGET}[-|_]${@PACKAGE_NAME@_FIND_VERSION}[^.]*"
-            "^(lib)?${TARGET}[^.]*")
-        foreach(LIB ${LIBS})
-            #message(STATUS "Trying library ${LIB}")
-            get_filename_component(LIBFILE ${LIB} NAME)
-            foreach(PATTERN ${PATTERNS})
+            "^(lib)?${TARGET}.(a|so|lib|dll)$"
+            "^(lib)?${TARGET}[^.]*"
+            "^(lib)?.*${TARGET}[^.]*")
+        foreach(PATTERN ${PATTERNS})
+            foreach(LIB ${LIBS})
+                get_filename_component(LIBFILE ${LIB} NAME)
+                #message(STATUS "Trying pattern ${PATTERN} for ${LIBFILE}..")
                 if (LIBFILE MATCHES ${PATTERN})
                     message(STATUS "Matched target ${TARGET} to library '${LIB}' (${LIBFILE} MATCHES ${PATTERN})")
                     add_library(${TARGET} UNKNOWN IMPORTED)
@@ -41,6 +51,9 @@ macro(MODULE_TO_TARGETS LIBS INCS)
                             INTERFACE_INCLUDE_DIRECTORIES "${INCS}")
                     endif()
                     SET(CURTARGET_DONE TRUE)
+                    #LIST(APPEND DONE_LIBS ${LIB})
+                    
+                    LIST(APPEND FOUND_TARGETS ${TARGET})
                     LIST(APPEND DONE_LIBS ${LIB})
                     break()
                 endif()
@@ -50,15 +63,26 @@ macro(MODULE_TO_TARGETS LIBS INCS)
             endif()
         endforeach()
     endforeach()
+    
     # Add non-matched libraries as link libraries so nothing gets forgotten
     foreach(LIB ${LIBS})
-        LIST(FIND DONE_LIBS ${LIB} POSITION)
-        if (POSITION EQUAL -1)
-            message(STATUS "Adding not-associated library ${LIB} to link interface of targets '@PACKAGE_TARGETS@'")
-            foreach(TARGET @PACKAGE_TARGETS@)
+        LIST(FIND DONE_LIBS ${LIB} POSI)
+        if (POSI EQUAL -1)
+            message(STATUS "Adding not-associated library ${LIB} to link interface of targets '${FOUND_TARGETS}'")
+            foreach(TARGET ${FOUND_TARGETS})
                 set_target_properties(${TARGET} PROPERTIES
                     INTERFACE_LINK_LIBRARIES "${LIB}")
             endforeach()
+        endif()
+    endforeach()
+    
+    # Warn about non-found targets
+    #LIST(REMOVE_ITEM ALL_TARGETS ${FOUND_TARGETS})
+    foreach(TARGET ${ALL_TARGETS})
+        LIST(FIND FOUND_TARGETS ${TARGET} POSI)
+        if (POSI EQUAL -1)
+            message(WARNING "Target ${TARGET} could not be matched to any library. Adding empty target.")
+            add_library(${TARGET} UNKNOWN IMPORTED)
         endif()
     endforeach()
 endmacro()
