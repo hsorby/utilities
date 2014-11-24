@@ -15,6 +15,7 @@ find_path (SUNDIALS_DIR include/sundials/sundials_config.h
     HINTS ENV SUNDIALS_DIR
     PATHS $ENV{HOME}/sundials DOC "Sundials Directory")
 
+SET(ERR_MESSAGE DEFAULT_MSG)
 IF(EXISTS ${SUNDIALS_DIR}/include/sundials/sundials_config.h)
   SET(SUNDIALS_FOUND YES)
   SET(SUNDIALS_INCLUDES ${SUNDIALS_DIR})
@@ -24,8 +25,14 @@ IF(EXISTS ${SUNDIALS_DIR}/include/sundials/sundials_config.h)
   
   if(SUNDIALS_FIND_VERSION)
       # The sundials >= 2.5 have rearranged header file locations - check for that
-      if(SUNDIALS_FIND_VERSION VERSION_GREATER 2.5)
-          if(NOT EXISTS ${SUNDIALS_DIR}/include/cvode)
+      if(NOT SUNDIALS_FIND_VERSION VERSION_LESS 2.5)
+          if(NOT EXISTS ${SUNDIALS_DIR}/include/nvector)
+              SET(ERR_MESSAGE "Sundials version too old: Missing 'cvode', 'nvector', ... include dirs")
+              SET(SUNDIALS_FOUND NO)
+              SET(SUNDIALS_INCLUDES )
+              SET(SUNDIALS_LIBRARIES )
+          elseif(NOT EXISTS ${SUNDIALS_DIR}/include/nvector/nvector_parallel.h)
+              SET(ERR_MESSAGE "Sundials installation incomplete: Missing 'nvector/nvector_parallel.h' include")
               SET(SUNDIALS_FOUND NO)
               SET(SUNDIALS_INCLUDES )
               SET(SUNDIALS_LIBRARIES )
@@ -40,4 +47,4 @@ ELSE()
 ENDIF()
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(SUNDIALS DEFAULT_MSG SUNDIALS_LIBRARIES SUNDIALS_INCLUDES)
+find_package_handle_standard_args(SUNDIALS ${ERR_MESSAGE} SUNDIALS_LIBRARIES SUNDIALS_INCLUDES)
