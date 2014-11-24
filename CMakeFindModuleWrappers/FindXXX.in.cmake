@@ -49,9 +49,14 @@ macro(MODULE_TO_TARGETS LIBS INCS)
             # Here we loop patterns before libraries, so that exact matches are tried
             # against all library names before the more 'relaxed' patterns are tried for a name,
             # which could get a wrong match
-            SET(PATTERNS 
-                "^(lib)?${TARGET}[-|_]${@PACKAGE_NAME@_FIND_VERSION}.(a|so|lib|dll)$"
-                "^(lib)?${TARGET}[-|_]${@PACKAGE_NAME@_FIND_VERSION}[^.]*"
+            SET(PATTERNS )
+            # If we have a version, look for that first
+            if (@PACKAGE_NAME@_FIND_VERSION)
+                LIST(APPEND PATTERNS 
+                    "^(lib)?${TARGET}[-|_]${@PACKAGE_NAME@_FIND_VERSION}.(a|so|lib|dll)$"
+                    "^(lib)?${TARGET}[-|_]${@PACKAGE_NAME@_FIND_VERSION}[^.]*")
+            endif()
+            LIST(APPEND PATTERNS 
                 "^(lib)?${TARGET}.(a|so|lib|dll)$"
                 "^(lib)?${TARGET}[^.]*"
                 "^(lib)?.*${TARGET}[^.]*")
