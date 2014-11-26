@@ -76,6 +76,18 @@ FUNCTION(GROUP_SOURCE_FILES)
 	ENDFOREACH()
 ENDFUNCTION()
 
+function(print_link_libraries tgt)
+    if (TARGET ${tgt})
+        get_target_property(LINKLIBS ${tgt} INTERFACE_LINK_LIBRARIES)
+        message("Target ${tgt}: ${LINKLIBS}")
+        foreach(LIB ${LINKLIBS})
+            print_link_libraries(${LIB})
+        endforeach()
+    else()
+        message("Library ${tgt}")
+    endif()
+endfunction()
+
 function(echo_target_property tgt prop)
 
   # v for value, d for defined, s for set

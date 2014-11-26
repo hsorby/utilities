@@ -8,6 +8,35 @@ macro(GET_BUILD_TYPE VARNAME)
     endif()
 endmacro()
 
+# Appends a library to the list of interface_link_libraries
+function(append_link_library TARGET LIB)
+    get_target_property(CURRENT_ILL
+        ${TARGET} INTERFACE_LINK_LIBRARIES)
+    if (NOT CURRENT_ILL)
+        SET(CURRENT_ILL )
+    endif()
+    set_target_properties(${TARGET} PROPERTIES
+        INTERFACE_LINK_LIBRARIES "${CURRENT_ILL};${LIB}")
+endfunction()
+
+function(my_add_library TARGET LIB)
+    add_library(${TARGET} UNKNOWN IMPORTED)
+    set_property(TARGET ${TARGET} APPEND PROPERTY
+        IMPORTED_CONFIGURATIONS ${CURRENT_BUILD_TYPE})
+    set_target_properties(${TARGET} PROPERTIES 
+        IMPORTED_LOCATION_${CURRENT_BUILD_TYPE} ${LIB})
+    # Simply add the m and rt libraries on unix
+    if(UNIX)
+        append_link_library(${TARGET} "m;rt")
+    endif()
+    if (INCS)
+        set_target_properties(${TARGET} PROPERTIES 
+            INTERFACE_INCLUDE_DIRECTORIES "${INCS}")
+    endif()
+    #include(~/hpc/ocms/utilities/FunctionDefinitions.cmake)
+    #echo_target(${ALL_TARGETS})
+endfunction()
+
 macro(MODULE_TO_TARGETS LIBS INCS)
     SET(LIBS ${LIBS})
     SET(ALL_TARGETS @PACKAGE_TARGETS@)
@@ -21,25 +50,10 @@ macro(MODULE_TO_TARGETS LIBS INCS)
     # for only one target and one library stuff is easy 
     if(NUMLIBS EQUAL 1 AND NUMTARGETS EQUAL 1)
         message(STATUS "One target and one library: Matching '${ALL_TARGETS}' to library '${LIBS}'")
-        add_library(${ALL_TARGETS} UNKNOWN IMPORTED)
-        set_property(TARGET ${ALL_TARGETS} APPEND PROPERTY
-            IMPORTED_CONFIGURATIONS ${CURRENT_BUILD_TYPE})
-        #message(STATUS "Calling set_target_properties(${ALL_TARGETS} PROPERTIES IMPORTED_LOCATION_${CURRENT_BUILD_TYPE} ${LIBS})") 
-        set_target_properties(${ALL_TARGETS} PROPERTIES 
-            IMPORTED_LOCATION_${CURRENT_BUILD_TYPE} ${LIBS})
-        # Simply add the m and rt libraries on unix
-        if(UNIX)
-            set_target_properties(${ALL_TARGETS} PROPERTIES
-                INTERFACE_LINK_LIBRARIES "m;rt")
-        endif()
-        if (INCS)
-            set_target_properties(${ALL_TARGETS} PROPERTIES 
-                INTERFACE_INCLUDE_DIRECTORIES "${INCS}")
-        endif()
-        #include(~/hpc/ocms/utilities/FunctionDefinitions.cmake)
-        #echo_target(${ALL_TARGETS})
+        my_add_library(${ALL_TARGETS} ${LIBS})
+        LIST(APPEND DONE_TARGETS ${ALL_TARGETS})
     else()
-        SET(FOUND_TARGETS )
+        SET(DONE_TARGETS )
         SET(DONE_LIBS )
         foreach(TARGET ${ALL_TARGETS})
             #message(STATUS "Trying target ${TARGET}")
@@ -66,23 +80,9 @@ macro(MODULE_TO_TARGETS LIBS INCS)
                     #message(STATUS "Trying pattern ${PATTERN} for ${LIBFILE}..")
                     if (LIBFILE MATCHES ${PATTERN})
                         message(STATUS "Matched target ${TARGET} to library '${LIB}' (${LIBFILE} MATCHES ${PATTERN})")
-                        add_library(${TARGET} UNKNOWN IMPORTED)
-                        set_property(TARGET ${TARGET} APPEND PROPERTY
-                            IMPORTED_CONFIGURATIONS ${CURRENT_BUILD_TYPE}) 
-                        set_target_properties(${TARGET} PROPERTIES 
-                            IMPORTED_LOCATION_${CURRENT_BUILD_TYPE} ${LIB})
-                            
-                        # Simply add the m and rt libraries on unix
-                        if(UNIX)
-                            set_target_properties(${TARGET} PROPERTIES
-                                INTERFACE_LINK_LIBRARIES "m;rt")
-                        endif()
-                        if (INCS)
-                            set_target_properties(${TARGET} PROPERTIES 
-                                INTERFACE_INCLUDE_DIRECTORIES "${INCS}")
-                        endif()
+                        my_add_library(${TARGET} ${LIB})
                         SET(CURTARGET_DONE TRUE)
-                        LIST(APPEND FOUND_TARGETS ${TARGET})
+                        LIST(APPEND DONE_TARGETS ${TARGET})
                         LIST(APPEND DONE_LIBS ${LIB})
                         break()
                     endif()
@@ -95,10 +95,12 @@ macro(MODULE_TO_TARGETS LIBS INCS)
         
         # Warn about non-found targets
         foreach(TARGET ${ALL_TARGETS})
-            LIST(FIND FOUND_TARGETS ${TARGET} POSI)
+            LIST(FIND DONE_TARGETS ${TARGET} POSI)
             if (POSI EQUAL -1)
-                message(WARNING "Target ${TARGET} could not be matched to any library. Adding empty target.")
-                #add_library(${TARGET} UNKNOWN IMPORTED)
+                LIST(GET LIBS 0 DEFAULT_LIB)
+                message(STATUS "Target ${TARGET} could not be matched to any library. Associating with (first listed) library ${DEFAULT_LIB}.")
+                my_add_library(${TARGET} ${DEFAULT_LIB})
+                LIST(APPEND DONE_TARGETS ${TARGET})
             endif()
         endforeach()
         
@@ -106,13 +108,17 @@ macro(MODULE_TO_TARGETS LIBS INCS)
         foreach(LIB ${LIBS})
             LIST(FIND DONE_LIBS ${LIB} POSI)
             if (POSI EQUAL -1)
-                message(STATUS "Adding not-associated library ${LIB} to link interface of targets '${FOUND_TARGETS}'")
-                foreach(TARGET ${FOUND_TARGETS})
-                    set_target_properties(${TARGET} PROPERTIES
-                        INTERFACE_LINK_LIBRARIES "${LIB}")
+                message(STATUS "Adding not-associated library ${LIB} to link interface of targets '${DONE_TARGETS}'")
+                foreach(TARGET ${DONE_TARGETS})
+                    append_link_library(${TARGET} ${LIB})
                 endforeach()
             endif()
         endforeach()
+        
+        #foreach(TARGET ${ALL_TARGETS})
+        #    get_target_property(HELP ${TARGET} INTERFACE_LINK_LIBRARIES)
+        #    message(STATUS "@@@@@@@@@@@@ Link libs of ${TARGET}: ${HELP}")
+        #endforeach()
     endif()
 endmacro()
 

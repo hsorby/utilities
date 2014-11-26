@@ -24,42 +24,77 @@ MACRO(GET_COMPILER_NAME VARNAME)
 	    #else()
 	    #    SET(${VARNAME} gxx-${VERSION})
 	    #endif()
+	ELSEIF(${CMAKE_C_COMPILER} MATCHES icc 
+	    OR ${CMAKE_CXX_COMPILER} MATCHES icpc
+	    OR ${CMAKE_Fortran_COMPILER} MATCHES ifort)
+	    SET(${VARNAME} "intel")
 	ELSEIF( CYGWIN )
-		SET(${VARNAME} "cygwin" )
+		SET(${VARNAME} "cygwin")
 	ENDIF()
 ENDMACRO()
 
-macro(GET_ARCHITECTURE_PATH VARNAME)
+function(get_architecture_path VARNAME)
     SET(ARCHPATH )
     
     if(OCM_USE_ARCHITECTURE_PATH)
-    
         # Architecture/System
         STRING(TOLOWER ${CMAKE_SYSTEM_NAME} CMAKE_SYSTEM_NAME_LOWER)
         SET(ARCHPATH ${CMAKE_SYSTEM_PROCESSOR}_${CMAKE_SYSTEM_NAME_LOWER})
         
+        # Bit/Adressing bandwidth
+        #if (ABI)
+        #    SET(ARCHPATH ${ARCHPATH}/${ABI}bit)
+        #endif()
+        
         # MPI version information
-        if(DEFINED MPI_C_COMPILER)
-            SET(MPI_PART )
-            if ("${MPI_C_INCLUDE_PATH}" MATCHES ".*mpich2.*")
-                SET(MPI_PART mpich2)
-            elseif("${MPI_C_INCLUDE_PATH}" MATCHES ".*openmpi.*")
-                SET(MPI_PART openmpi)
+        SET(MPI_PART )
+        if (OCM_USE_MPI)
+            if (MPI)
+                # Take the MPI mnemonic if set
+                SET(MPI_PART ${MPI})
             else()
-                get_filename_component(COMP_NAME ${MPI_C_COMPILER} NAME)
-                STRING(TOLOWER MPI_PART ${COMP_NAME})
+                SET(MNEMONICS mpich mpich2 openmpi intel)
+                # Patterns to match the include path
+                SET(PATTERNS ".*mpich([/|-].*|$)" ".*mpich2([/|-].*|$)" ".*openmpi([/|-].*|$)" ".*(intel|impi)[/|-].*")
+                foreach(IDX RANGE 3)
+                    LIST(GET MNEMONICS ${IDX} MNEMONIC)
+                    LIST(GET PATTERNS ${IDX} PATTERN)
+                    message(STATUS "Architecture: checking '${MPI_C_INCLUDE_PATH} MATCHES ${PATTERN} OR ${MPI_CXX_INCLUDE_PATH} MATCHES ${PATTERN}'")
+                    if ("${MPI_C_INCLUDE_PATH}" MATCHES ${PATTERN} OR "${MPI_CXX_INCLUDE_PATH}" MATCHES ${PATTERN})
+                        message(STATUS "Architecture: match!")
+                        SET(MPI_PART ${MNEMONIC})
+                        break()
+                    endif()
+                endforeach()
+                if (NOT MPI_PART)
+                    get_filename_component(COMP_NAME ${MPI_C_COMPILER} NAME)
+                    STRING(TOLOWER MPI_PART "unknown_${COMP_NAME}")
+                endif()
             endif()
-            if (MPI_PART)
-                SET(ARCHPATH ${ARCHPATH}/${MPI_PART})
-            endif()
+        else()
+            SET(MPI_PART "sequential")
+        endif()
+        if (MPI_PART)
+            SET(ARCHPATH ${ARCHPATH}/${MPI_PART})
         endif()
         
         # Compiler
         GET_COMPILER_NAME(COMPILER)
         SET(ARCHPATH ${ARCHPATH}/${COMPILER})
-    
+    else()
+        SET(ARCHPATH .)
     endif()
     
+    #if (ARGC EQUAL 2 AND ARGV1 STREQUAL FULL)
+    #    get_build_type_extra(BUILDTYPEEXTRA)
+    #    SET(ARCHPATH ${ARCHPATH}/${BUILDTYPEEXTRA})
+    #endif()
+    
+    # Append to desired variable
+    SET(${VARNAME} ${ARCHPATH} PARENT_SCOPE)
+endfunction()
+
+function(get_build_type_extra VARNAME)
     # Build type
     if (CMAKE_BUILD_TYPE)
         STRING(TOLOWER ${CMAKE_BUILD_TYPE} buildtype)
@@ -69,8 +104,5 @@ macro(GET_ARCHITECTURE_PATH VARNAME)
     else()
         SET(BUILDTYPEEXTRA noconfig)
     endif()
-    SET(ARCHPATH ${ARCHPATH}/${BUILDTYPEEXTRA})
-    
-    # Append to desired variable
-    SET(${VARNAME} ${ARCHPATH})
-endmacro()
+    SET(${VARNAME} ${BUILDTYPEEXTRA} PARENT_SCOPE)
+endfunction()
