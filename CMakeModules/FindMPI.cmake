@@ -209,7 +209,7 @@ endif()
 foreach (lang C CXX Fortran)
   foreach (id GNU Intel PGI XL)
     if (NOT CMAKE_${lang}_COMPILER_ID OR "${CMAKE_${lang}_COMPILER_ID}" STREQUAL "${id}")
-      list(APPEND _MPI_${lang}_COMPILER_NAMES ${_MPI_${id}_${lang}_COMPILER_NAMES})
+      list(INSERT _MPI_${lang}_COMPILER_NAMES 0 ${_MPI_${id}_${lang}_COMPILER_NAMES})
     endif()
     unset(_MPI_${id}_${lang}_COMPILER_NAMES)    # clean up the namespace here
   endforeach()
