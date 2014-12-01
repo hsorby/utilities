@@ -154,8 +154,17 @@ else()
     # Temporarily disable the required flag (if set from outside)
     SET(_PKG_REQ_OLD ${@PACKAGE_NAME@_FIND_REQUIRED})
     UNSET(@PACKAGE_NAME@_FIND_REQUIRED)
+    
+    # Remove CMAKE_INSTALL_PREFIX from CMAKE_SYSTEM_PREFIX_PATH - we dont want the module search to "accidentally"
+    # discover the packages in our install directory, collect libraries and then re-turn them into targets (redundant round-trip)
+    LIST(REMOVE_ITEM CMAKE_SYSTEM_PREFIX_PATH ${CMAKE_INSTALL_PREFIX})
+    
+    # Actual MODULE mode find call
     find_package(@PACKAGE_NAME@ ${@PACKAGE_NAME@_FIND_VERSION} MODULE QUIET)
+    
+    # Restore stuff
     SET(@PACKAGE_NAME@_FIND_REQUIRED ${_PKG_REQ_OLD})
+    LIST(APPEND CMAKE_SYSTEM_PREFIX_PATH ${CMAKE_INSTALL_PREFIX})
     
     if (@PACKAGE_NAME@_FOUND)
         message(STATUS "Found package @PACKAGE_NAME@: ${@PACKAGE_NAME@_LIBRARIES}")

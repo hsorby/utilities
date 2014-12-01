@@ -33,6 +33,8 @@ MACRO(GET_COMPILER_NAME VARNAME)
 	ENDIF()
 ENDMACRO()
 
+# This function assembles the architecture path
+# We have [ARCH][MPI][MT][COMPILER] so far
 function(get_architecture_path VARNAME)
     SET(ARCHPATH )
     
@@ -78,9 +80,15 @@ function(get_architecture_path VARNAME)
             SET(ARCHPATH ${ARCHPATH}/${MPI_PART})
         endif()
         
+        # Multithreading
+        if (OCM_USE_MT)
+            SET(ARCHPATH ${ARCHPATH}/mt)
+        endif()
+        
         # Compiler
         GET_COMPILER_NAME(COMPILER)
         SET(ARCHPATH ${ARCHPATH}/${COMPILER})
+        
     else()
         SET(ARCHPATH .)
     endif()

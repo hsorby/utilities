@@ -779,7 +779,7 @@ foreach (lang C CXX Fortran)
       HINTS  ${_MPI_PREFIX_PATH} ${MPI_HOME} $ENV{MPI_HOME}
       PATH_SUFFIXES ${_BIN_SUFFIX}
       ${PATHOPT})
-    message(STATUS "Using MPI_${lang}_COMPILER '${MPI_${lang}_COMPILER}'")
+    #message(STATUS "Using MPI_${lang}_COMPILER '${MPI_${lang}_COMPILER}'")
     interrogate_mpi_compiler(${lang} ${try_libs})
     mark_as_advanced(MPI_${lang}_COMPILER)
 
@@ -818,6 +818,9 @@ foreach (lang C CXX Fortran)
             endif()
         endforeach()
     endif()
+    
+    #message(STATUS "MPI ${lang} Libs: ${MPI_${lang}_LIBRARIES}")
+    #message(STATUS "MPI ${lang} Path: ${MPI_${lang}_INCLUDE_PATH}")
 
     if (regular_compiler_worked)
       find_package_handle_standard_args(MPI_${lang} DEFAULT_MSG MPI_${lang}_COMPILER)

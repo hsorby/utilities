@@ -13,7 +13,8 @@
 
 find_path (SUNDIALS_DIR include/sundials/sundials_config.h 
     HINTS ENV SUNDIALS_DIR
-    PATHS $ENV{HOME}/sundials DOC "Sundials Directory")
+    PATHS $ENV{HOME}/sundials
+    DOC "Sundials Directory")
 
 SET(ERR_MESSAGE DEFAULT_MSG)
 IF(EXISTS ${SUNDIALS_DIR}/include/sundials/sundials_config.h)
